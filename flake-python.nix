@@ -1,33 +1,31 @@
 {
-  description = "Flake to manage pharma workspace.";
-
-  inputs.nixpkgs.url = "nixpkgs/nixpkgs-unstable";
-
-  outputs = inputs:
+  inputs = {
+    nixpkgs = {
+      url = "github:nixos/nixpkgs/nixos-unstable";
+    };
+    flake-utils = {
+      url = "github:numtide/flake-utils";
+    };
+  };
+  outputs = { nixpkgs, flake-utils, ... }: flake-utils.lib.eachDefaultSystem (system:
     let
-      system = "aarch64-darwin";
-      pkgs = inputs.nixpkgs.legacyPackages.${system};
-    in
-    {
-      devShell.${system} = pkgs.mkShell rec {
-        name = "pharma-shell";
+      pkgs = import nixpkgs {
+        inherit system;
+      };
+    in rec {
+      devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
-          # database
-          postgresql
-          # misc
-          openssl
-           # Python and related packages
-          python3
-          python3Packages.virtualenv
-          python3Packages.numpy
-          python3Packages.pandas
-          python3Packages.opensearch-py
+          python311
+          python311Packages.pip
         ];
-
-
-
         shellHook = ''
+          echo "Entering devShell for ${system}"
+          export PIP_PREFIX=$(pwd)/_build/pip_packages #Dir where built packages are stored
+          export PYTHONPATH="$PIP_PREFIX/${pkgs.python3.sitePackages}:$PYTHONPATH"
+          export PATH="$PIP_PREFIX/bin:$PATH"
+          unset SOURCE_DATE_EPOCH
         '';
       };
-    };
+    }
+  );
 }
